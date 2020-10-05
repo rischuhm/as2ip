@@ -1,7 +1,8 @@
-import requests, re, datetime, gzip,json
+import requests, re, datetime, gzip,json, os
 import pandas as pd
 import ipaddress
 
+cwd = os.getcwd()
     
 def get_file_url():
     x = datetime.datetime.now()
@@ -14,21 +15,21 @@ def get_file_url():
     return base_url+re.findall(pattern,r.text)[-1]
 
 def get_file(file_url):
-    with open('/Users/Richard/Desktop/py_as/file.gz', 'wb') as f:
+    with open(f'{cwd}/file.gz', 'wb') as f:
         r = requests.get(file_url)
         f.write(r.content)
 
 def unzip_file():
-    f = gzip.open('/Users/Richard/Desktop/py_as/file.gz', 'rb')
+    f = gzip.open(f'{cwd}/file.gz', 'rb')
     file_content = f.read()
-    data = open('/Users/Richard/Desktop/py_as/data.csv', 'wb')
+    data = open(f'{cwd}/data.csv', 'wb')
     data.write(file_content)
     data.close()
 
 def build_file():
     pd.set_option('display.max_rows', None)
     print(f"""{"x"*50}\nLoading file\n{"x"*50}\n""")
-    df = pd.read_csv('/Users/Richard/Desktop/py_as/data.csv',sep='\t',names=["IP","Subnet","ASnr"])
+    df = pd.read_csv(f'{cwd}/data.csv',sep='\t',names=["IP","Subnet","ASnr"])
 
     print(f"""{"x"*50}\nBuilding nets\n{"x"*50}\n""")
     df["Nets"] = df["IP"] + "/" + df["Subnet"].astype(str)
@@ -62,7 +63,7 @@ def build_file():
         subnet =  df["Nets"][ind]
         if asnr not in asnr_list:
             asnr_list.append(asnr)
-            print(f"""+ Processed: {round(len(asnr_list)/len(df["ASnr"].unique())*100,2)}%""")
+            print(f"""+ Processed: {round(len(asnr_list)/len(df["ASnr"].unique())*100,1)}%""",end="\r")
             mydata = {"ASNR":asnr,"NETS":[subnet],"IN":0,"OUT":0}
             set_list.append(mydata)
         else:
@@ -73,18 +74,19 @@ def build_file():
                             break
                         elif item["NETS"][-1] and not(ipaddress.ip_network(subnet).subnet_of(ipaddress.ip_network(item["NETS"][-1]))):
                             item["NETS"].append(subnet) 
+                
 
-
+    print("100.00%")
     print(f"""{"x"*50}\nFinished building JSON. Writing the file\n{"x"*50}\n""")
             
     data = json.dumps(set_list)
     #print(data)
-    with open("/Users/Richard/Desktop/py_as/as2ip.json","w") as f:
+    with open(f"{cwd}/as2ip.json","w") as f:
         f.write(data)
 
     print(f"""{"x"*50}\nWrote inventory file.\nCompletely done. \n{"x"*50}\n""")
 
 
-#get_file(get_file_url())
-#unzip_file()
-#build_file()
+# get_file(get_file_url())
+# unzip_file()
+build_file()
